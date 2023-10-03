@@ -8,5 +8,5 @@ setup(
     long_description_content_type='text/markdown',
     author='Allen Chen',
     author_email='allenmuhanchen@gmail.com',
-    url='https://github.com/AllenMuhanChen/ConnorLabAnalysisTools',
+    url='https://github.com/EdConnorLab/ConnorLabAnalysisTools',
 
