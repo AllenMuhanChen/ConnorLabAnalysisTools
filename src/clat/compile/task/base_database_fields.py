@@ -1,5 +1,5 @@
-from compile.task.task_field import TaskField
-from util.connection import Connection
+from clat.compile.task.task_field import TaskField
+from clat.util.connection import Connection
 
 
 class TaskIdField(TaskField):

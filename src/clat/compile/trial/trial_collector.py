@@ -1,8 +1,9 @@
 import numpy
 import numpy as np
-from src.util import time_util, table_util
-from src.util.connection import Connection
-from src.util.time_util import When
+from clat.util import table_util
+from clat.util import time_util
+from clat.util.connection import Connection
+from clat.util.time_util import When
 
 
 class TrialCollector:

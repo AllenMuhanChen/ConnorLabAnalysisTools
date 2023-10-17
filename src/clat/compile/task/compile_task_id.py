@@ -1,6 +1,6 @@
 import xmltodict
 
-from util.connection import Connection
+from clat.util.connection import Connection
 
 
 class TaskIdCollector:

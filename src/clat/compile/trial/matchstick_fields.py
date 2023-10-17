@@ -1,5 +1,5 @@
-from compile.trial.trial_field import Field
-from src.util.time_util import When
+from clat.compile.trial.trial_field import Field
+from clat.util.time_util import When
 
 
 class MatchStickField(Field):

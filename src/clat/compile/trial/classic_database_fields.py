@@ -1,8 +1,8 @@
 import xmltodict
 
-from compile.trial.trial_field import DatabaseField
-from src.util.connection import Connection
-from src.util.time_util import When
+from clat.compile.trial.trial_field import DatabaseField
+from clat.util.connection import Connection
+from clat.util.time_util import When
 
 
 def get_stim_spec_id(conn: Connection, when: When) -> int:

@@ -1,9 +1,7 @@
-from abc import abstractmethod
-
 import xmltodict
 
-from compile.task.base_database_fields import StimSpecField
-from util.connection import Connection
+from clat.compile.task.base_database_fields import StimSpecField
+from clat.util.connection import Connection
 import re
 
 

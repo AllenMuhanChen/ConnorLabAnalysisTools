@@ -3,10 +3,7 @@ from time import sleep
 
 import mysql.connector
 import pandas as pd
-from pandas import DataFrame
-
-from src.util import time_util
-from src.util.time_util import When
+from clat.util.time_util import When
 
 
 class Connection:

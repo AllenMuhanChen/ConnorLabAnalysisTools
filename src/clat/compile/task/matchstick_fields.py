@@ -1,7 +1,7 @@
 import xmltodict
 
-from compile.task.base_database_fields import StimSpecDataField
-from util.connection import Connection
+from clat.compile.task.base_database_fields import StimSpecDataField
+from clat.util.connection import Connection
 
 
 class MatchStickField(StimSpecDataField):

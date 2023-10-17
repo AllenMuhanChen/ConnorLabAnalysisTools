@@ -1,7 +1,7 @@
 import numpy as np
 import xmltodict
 from pandas import DataFrame
-from src.util.time_util import When
+from clat.util.time_util import When
 from dataclasses import dataclass
 
 

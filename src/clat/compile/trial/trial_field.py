@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 from collections import OrderedDict
-from typing import Callable
 
 import pandas as pd
 
-from src.util.connection import Connection
-from src.util.time_util import When
+from clat.util.connection import Connection
+from clat.util.time_util import When
 
 
 class Field:

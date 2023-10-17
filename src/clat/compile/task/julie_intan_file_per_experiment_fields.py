@@ -1,5 +1,4 @@
-from compile.task.task_field import TaskField
-from intan.channels import Channel
+from clat.compile.task.task_field import TaskField
 
 
 class SpikeTimesForChannelsField_Experiment(TaskField):
