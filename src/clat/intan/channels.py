@@ -138,9 +138,11 @@ class Channel(Enum):
     D_030 = "D-030"
     D_031 = "D-031"
 
-
-
-
-
+    def __eq__(self, other):
+        if isinstance(other, Channel):
+            return self.value == other.value
+        elif isinstance(other, str):
+            return self.value == other
+        return False
 
 

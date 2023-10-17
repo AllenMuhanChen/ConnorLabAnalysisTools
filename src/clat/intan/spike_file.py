@@ -2,7 +2,7 @@ import os
 import struct
 from typing import Any
 
-from intan.channels import Channel
+from clat.intan.channels import Channel
 
 
 # Version 3.0, 11 February 2021

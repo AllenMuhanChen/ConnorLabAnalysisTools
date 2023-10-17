@@ -3,7 +3,7 @@ import os
 
 import numpy as np
 
-from intan.channels import Channel  # Assuming you have this import
+from clat.intan.channels import Channel  # Assuming you have this import
 
 
 def read_amplifier_data_with_mmap(file_path, amplifier_channels):

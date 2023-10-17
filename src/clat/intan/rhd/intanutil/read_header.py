@@ -4,7 +4,7 @@
 # Modified Adrian Foy Sep 2018
 
 import sys, struct
-from rhd.intanutil.qstring import read_qstring
+from clat.intan.rhd.intanutil.qstring import read_qstring
 
 def read_header(fid):
     """Reads the Intan File Format header from the given file."""
