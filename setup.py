@@ -1,5 +1,8 @@
 from setuptools import setup, find_packages
 
+with open('requirements.txt') as f:
+    required = f.read().splitlines()
+
 setup(
     name='ConnorLabAnalysisTools',
     version='0.1.0',
@@ -9,4 +12,7 @@ setup(
     author='Allen Chen',
     author_email='allenmuhanchen@gmail.com',
     url='https://github.com/EdConnorLab/ConnorLabAnalysisTools',
+    packages=find_packages(),
+    install_requires=required,
+)
 
