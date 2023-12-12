@@ -68,6 +68,8 @@ class TrialCollector:
         calibration_trial_times = []
         for when in all_trial_times:
             if table_util.contains_calibration(self.beh_msg, when):
+                when.start = int(when.start)
+                when.stop = int(when.stop)
                 calibration_trial_times.append(when)
         return calibration_trial_times
 
