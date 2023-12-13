@@ -69,9 +69,13 @@ class Connection:
             return result
 
     def get_beh_msg(self, when: When) -> pd.DataFrame:
-        self.execute("SELECT * FROM BehMsg WHERE tstamp>= %s && tstamp<=%s", (when.start, when.stop))
-        df = pd.DataFrame(self.fetch_all())
-        df.columns = ['tstamp', 'type', 'msg']
+        try:
+            self.execute("SELECT * FROM BehMsg WHERE tstamp>= %s && tstamp<=%s", (when.start, when.stop))
+            df = pd.DataFrame(self.fetch_all())
+            df.columns = ['tstamp', 'type', 'msg']
+        except ValueError as e:
+            print("Error: BehMsg empty for time: " + str(when))
+            raise ValueError
         return df
 
     def get_stim_spec(self, when: When) -> pd.DataFrame:

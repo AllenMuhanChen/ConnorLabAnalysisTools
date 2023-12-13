@@ -27,6 +27,7 @@ def main():
 
     plot_average_volts(data)
 
+
 def filter_messages_after_experiment_start(conn, calibration_trial_times):
     # Find the timestamp of the most recent "ExperimentStart" message
     query = """
@@ -51,6 +52,7 @@ def filter_messages_after_experiment_start(conn, calibration_trial_times):
 def hash_tuple(t):
     """ Hash a tuple to a unique value """
     return hash(t)
+
 
 def plot_average_volts(data):
     # Assuming data is your DataFrame and it contains the necessary columns
@@ -95,9 +97,6 @@ def plot_average_volts(data):
 
     # Show plot
     plt.show()
-
-
-
 
 
 class CalibrationPointPositionField(DatabaseField):
