@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import numpy as np
 import xmltodict
+from clat.util import time_util
 
 from clat.compile.trial.trial_collector import TrialCollector
 from clat.compile.trial.trial_field import DatabaseField, FieldList, get_data_from_trials
@@ -13,7 +15,7 @@ import matplotlib.pyplot as plt
 
 def main():
     current_conn = Connection("allen_estimshape_train_231211")
-    trial_collector = TrialCollector(conn=current_conn)
+    trial_collector = TrialCollector(conn=current_conn, when=time_util.days_ago(1))
     calibration_trial_times = trial_collector.collect_calibration_trials()
     calibration_trial_times = filter_messages_after_experiment_start(current_conn, calibration_trial_times)
     print("calibration_trial_times: " + str(calibration_trial_times))
@@ -207,7 +209,9 @@ class AverageVoltsField(VoltsField):
 
     def get(self, when: When) -> Tuple[Optional[Tuple[float, float]], Optional[Tuple[float, float]]]:
         left_eye_positions, right_eye_positions = super().get(when)
-        return self.calculate_average(left_eye_positions), self.calculate_average(right_eye_positions)
+        left_eye_positions_filtered = self.remove_outliers(left_eye_positions)
+        right_eye_positions_filtered = self.remove_outliers(right_eye_positions)
+        return self.calculate_average(left_eye_positions_filtered), self.calculate_average(right_eye_positions_filtered)
 
     @staticmethod
     def calculate_average(positions: List[Tuple[float, float]]) -> Optional[Tuple[float, float]]:
@@ -219,6 +223,30 @@ class AverageVoltsField(VoltsField):
         count = len(positions)
 
         return sum_x / count, sum_y / count
+
+    @staticmethod
+    def remove_outliers(positions: List[Tuple[float, float]]) -> List[Tuple[float, float]]:
+        if not positions:
+            return []
+
+        # Flatten the list of tuples and separate into x and y components
+        x_vals, y_vals = zip(*positions)
+        x_vals_filtered = AverageVoltsField.filter_outlier_values(x_vals)
+        y_vals_filtered = AverageVoltsField.filter_outlier_values(y_vals)
+
+        # Reconstruct the list of tuples with filtered values
+        return list(zip(x_vals_filtered, y_vals_filtered))
+
+    @staticmethod
+    def filter_outlier_values(values):
+        data = np.array(values)
+        median = np.percentile(data, 50)
+        q1 = np.percentile(data, 25)
+        q3 = np.percentile(data, 75)
+        iqr = q3 - q1
+        lower_bound = median - 1.5 * iqr
+        upper_bound = median + 1.5 * iqr
+        return data[(data >= lower_bound) & (data <= upper_bound)]
 
 
 if __name__ == '__main__':

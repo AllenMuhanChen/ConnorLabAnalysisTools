@@ -28,6 +28,7 @@ def days_ago(x):
     start = to_unix(datetime.date.today() - datetime.timedelta(days=x))
     stop = now()
     when = When(start, stop)
+    return when
 
 
 def all():
