@@ -8,19 +8,21 @@ from clat.util.time_util import When
 
 class Connection:
 
-    def __init__(self, database, password="up2nite", host="172.30.6.80"):
+    def __init__(self, database, user="xper_rw", password="up2nite", host="172.30.6.80"):
         self.database = database
+        self.user=user
         self.password = password
-        self.connect(database, password, host)
+        self.host = host
+        self._connect()
         self.lock = threading.Lock()
 
-    def connect(self, database, password, host):
+    def _connect(self):
         self.my_cursor = None
         self.mydb = mysql.connector.connect(
-            host=host,
-            user="xper_rw",
-            password=password,
-            database=database,
+            host=self.host,
+            user=self.user,
+            password=self.password,
+            database=self.database,
             autocommit=True
         )
 
@@ -35,7 +37,7 @@ class Connection:
                 self.my_cursor = self.mydb.cursor()
             except mysql.connector.errors.OperationalError as e:
                 sleep(1)
-                self.connect(self.database, self.password)
+                self._connect()
                 self.my_cursor = self.mydb.cursor()
             self.my_cursor.execute(statement, params)
 
