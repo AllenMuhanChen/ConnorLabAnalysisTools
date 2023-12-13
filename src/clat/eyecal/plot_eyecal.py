@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from tkinter import filedialog
+import tkinter as tk
 import numpy as np
 import xmltodict
 
@@ -32,6 +34,24 @@ def main():
 
     plot_average_volts(data)
 
+    user_response = input("Do you want to serialize the current parameters? (yes/no): ").strip().lower()
+    if user_response == 'yes':
+        # Get the current parameters
+        params = EyeCalibrationParameters.read_params(current_conn)
+        serialized_params = params.serialize()
+        print(serialized_params)
+
+        # Open a GUI window to select file save location
+        root = tk.Tk()
+        root.withdraw()  # Hide the main window
+        file_path = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=[("Text files", "*.txt")])
+
+        # Save the serialized data to a file, if a file was selected
+        if file_path:
+            with open(file_path, 'w') as file:
+                file.write(serialized_params)
+
+        root.destroy()
 
 
 def filter_messages_after_experiment_start(conn, calibration_trial_times):
@@ -107,6 +127,7 @@ def plot_average_volts(data):
     # Show plot
     plt.tight_layout()
     plt.show()
+
 
 class CalibrationPointPositionField(DatabaseField):
     def __init__(self, conn, name: str = "CalibrationPointPosition"):
@@ -264,6 +285,7 @@ class DegreesField(AverageVoltsField):
         params = EyeCalibrationParameters.read_params(self.conn)
         left_eye_positions, right_eye_positions = super().get(when)
         return params.volt_to_degree((left_eye_positions, right_eye_positions))
+
 
 if __name__ == '__main__':
     main()

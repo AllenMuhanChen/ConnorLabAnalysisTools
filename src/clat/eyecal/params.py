@@ -77,7 +77,7 @@ class EyeCalibrationParameters:
         for name, arr_ind, val in self.parameters:
             conn.execute(query, (name, arr_ind, tstamp, val))
 
-    def volt_to_degree(self, volts_left_right: Tuple[float, float]) -> Tuple[Tuple[float, float], Tuple[float,float]]:
+    def volt_to_degree(self, volts_left_right: Tuple[Tuple[float], Tuple[float]]) -> Tuple[Tuple[float, float], Tuple[float,float]]:
         # Retrieve calibration parameters for left eye
         Sxh_left = self._get_param_value('xper_left_iscan_mapping_algorithm_parameter', 0)
         Sxv_left = self._get_param_value('xper_left_iscan_mapping_algorithm_parameter', 1)
@@ -121,6 +121,20 @@ class EyeCalibrationParameters:
             if param_name == name and param_index == arr_ind:
                 return float(param_value)
         return None  # Or handle the case where the parameter is not found
+
+    def serialize(self) -> str:
+        """Serializes the parameters to a text string with each parameter on a new line."""
+        serialized_data = '\n'.join([f"{name},{arr_ind},{val}" for name, arr_ind, val in self.parameters])
+        return serialized_data
+
+    @classmethod
+    def deserialize(cls, serialized_data: str) -> 'EyeCalibrationParameters':
+        """Deserializes the text string back into an EyeCalibrationParameters object."""
+        parameters = []
+        for param_str in serialized_data.strip().split('\n'):
+            name, arr_ind, val = param_str.split(',')
+            parameters.append((name, int(arr_ind), val))
+        return cls(parameters)
 
     def __str__(self):
         return '\n'.join(f'Name: {name}, Arr_ind: {arr_ind}, Value: {val}' for name, arr_ind, val in self.parameters)
