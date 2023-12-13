@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import numpy as np
 import xmltodict
+
+from clat.eyecal.params import EyeCalibrationParameters
 from clat.util import time_util
 
 from clat.compile.trial.trial_collector import TrialCollector
@@ -25,9 +27,11 @@ def main():
     fields.append(SlideOnOffTimestampField(current_conn))
     fields.append(VoltsField(current_conn))
     fields.append(AverageVoltsField(current_conn))
+    fields.append(DegreesField(current_conn))
     data = get_data_from_trials(fields, calibration_trial_times)
 
     plot_average_volts(data)
+
 
 
 def filter_messages_after_experiment_start(conn, calibration_trial_times):
@@ -57,49 +61,52 @@ def hash_tuple(t):
 
 
 def plot_average_volts(data):
-    # Assuming data is your DataFrame and it contains the necessary columns
-
     # Define five distinct colors
     colors = ['red', 'green', 'blue', 'yellow', 'purple']
 
-    # Extracting data
+    # Extracting data for average volts and degrees
     left_eye_avg_volts = data['AverageVoltsLeftRight'].apply(lambda x: x[0])
     right_eye_avg_volts = data['AverageVoltsLeftRight'].apply(lambda x: x[1])
+    degrees_left_right = data['DegreesLeftRight']
     calibration_points = data['CalibrationPointPosition']
 
     # Assign colors to each unique calibration point
-    unique_points = sorted(set(calibration_points))  # Get unique points and sort them
+    unique_points = sorted(set(calibration_points))
     color_mapping = {point: colors[i] for i, point in enumerate(unique_points)}
-
-    # Map each calibration point to its color
     calibration_colors = calibration_points.map(color_mapping)
-    # Create subplots
-    fig, axs = plt.subplots(1, 2, figsize=(15, 6))
 
-    # Plot for left eye
-    sc = axs[0].scatter([x[0] for x in left_eye_avg_volts], [y[1] for y in left_eye_avg_volts],
-                        c=calibration_colors)
-    axs[0].set_title('Average Volt Positions - Left Eye')
-    axs[0].set_xlabel('X Position')
-    axs[0].set_ylabel('Y Position')
-    # axs[0].set_xlim(-1, 1)
-    # axs[0].set_ylim(-1, 1)
+    # Create 2x2 subplots
+    fig, axs = plt.subplots(2, 2, figsize=(15, 12))
 
-    # Plot for right eye
-    axs[1].scatter([x[0] for x in right_eye_avg_volts], [y[1] for y in right_eye_avg_volts],
-                   c=calibration_colors)
-    axs[1].set_title('Average Volt Positions - Right Eye')
-    axs[1].set_xlabel('X Position')
-    axs[1].set_ylabel('Y Position')
-    # axs[1].set_xlim(-1, 1)
-    # axs[1].set_ylim(-1, 1)
+    # Plot for left eye volts
+    axs[0, 0].scatter([x[0] for x in left_eye_avg_volts], [y[1] for y in left_eye_avg_volts], c=calibration_colors)
+    axs[0, 0].set_title('Average Volt Positions - Left Eye')
+    axs[0, 0].set_xlabel('X Position')
+    axs[0, 0].set_ylabel('Y Position')
 
-    # Adding colorbar
-    fig.colorbar(sc, ax=axs, orientation='vertical', label='Calibration Point')
+    # Plot for right eye volts
+    axs[0, 1].scatter([x[0] for x in right_eye_avg_volts], [y[1] for y in right_eye_avg_volts], c=calibration_colors)
+    axs[0, 1].set_title('Average Volt Positions - Right Eye')
+    axs[0, 1].set_xlabel('X Position')
+    axs[0, 1].set_ylabel('Y Position')
+
+    # Plot for left eye degrees
+    degrees_left = [degree[0] for degree in degrees_left_right]
+    axs[1, 0].scatter([x[0] for x in degrees_left], [y[1] for y in degrees_left], c=calibration_colors)
+    axs[1, 0].set_title('Degree Positions - Left Eye')
+    axs[1, 0].set_xlabel('X Position')
+    axs[1, 0].set_ylabel('Y Position')
+
+    # Plot for right eye degrees
+    degrees_right = [degree[1] for degree in degrees_left_right]
+    axs[1, 1].scatter([x[0] for x in degrees_right], [y[1] for y in degrees_right], c=calibration_colors)
+    axs[1, 1].set_title('Degree Positions - Right Eye')
+    axs[1, 1].set_xlabel('X Position')
+    axs[1, 1].set_ylabel('Y Position')
 
     # Show plot
+    plt.tight_layout()
     plt.show()
-
 
 class CalibrationPointPositionField(DatabaseField):
     def __init__(self, conn, name: str = "CalibrationPointPosition"):
@@ -248,6 +255,15 @@ class AverageVoltsField(VoltsField):
         upper_bound = median + 1.5 * iqr
         return data[(data >= lower_bound) & (data <= upper_bound)]
 
+
+class DegreesField(AverageVoltsField):
+    def __init__(self, conn, name: str = "DegreesLeftRight"):
+        super().__init__(conn, name)
+
+    def get(self, when: When):
+        params = EyeCalibrationParameters.read_params(self.conn)
+        left_eye_positions, right_eye_positions = super().get(when)
+        return params.volt_to_degree((left_eye_positions, right_eye_positions))
 
 if __name__ == '__main__':
     main()
