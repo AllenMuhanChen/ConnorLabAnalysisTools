@@ -29,7 +29,7 @@ class EyeCalibrationParameters:
     def read_params(cls, conn: Connection) -> 'EyeCalibrationParameters':
         temp_parameters = cls().parameters
         for i, (name, arr_ind, _) in enumerate(temp_parameters):
-            query = "SELECT val FROM SystemVar WHERE name = %s AND arr_ind = %s"
+            query = "SELECT val FROM SystemVar WHERE name = %s AND arr_ind = %s order by tstamp desc limit 1"
             conn.execute(query, (name, arr_ind))
             result = conn.fetch_all()
             if result:
