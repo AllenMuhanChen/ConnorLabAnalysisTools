@@ -29,6 +29,9 @@ class FieldList(list[Field]):
     def get_names(self):
         return [field.name for field in self]
 
+    def get_data(self, trial_tstamps: list[When]) -> pd.DataFrame:
+        return get_data_from_trials(self, trial_tstamps)
+
 
 class Trial:
     def __init__(self, when: When, fields: FieldList):
@@ -40,8 +43,6 @@ class Trial:
         names = self.fields.get_names()
         new_row = OrderedDict(zip(names, field_values))
         data.append(new_row)
-
-
 
 
 def get_data_from_trials(fields: FieldList, trial_tstamps: list[When]) -> pd.DataFrame:
