@@ -1,0 +1,86 @@
+from __future__ import annotations
+
+from collections import OrderedDict
+
+import pandas as pd
+
+from clat.compile.trial.trial_field import DatabaseField, FieldList
+from clat.util.connection import Connection
+from clat.util.time_util import When
+
+
+class CachedDatabaseField(DatabaseField):
+    """
+    A DatabaseField that caches its value so that it can be recalled rather than recomputed
+    for efficiency. Cached values can also be used for analysis without need to refetch data.
+
+    Override get_cached_value and cache_value to change the caching logic.
+    """
+
+    def __init__(self, conn: Connection, is_fetch_cache_enabled: bool = True, is_store_cache_enabled: bool = True,
+                 name: str = None):
+        super().__init__(conn, name)
+        self.is_cache_enabled = is_fetch_cache_enabled
+        self.is_store_cache_enabled = is_store_cache_enabled
+
+    def get_and_cache(self, when: When):
+        if self.is_cache_enabled:
+            cached_value = self.get_cached_value(self.name, when)
+            if cached_value is not None:
+                return cached_value
+
+        data = self.get(when)
+        if self.is_store_cache_enabled:
+            self.cache_value(self.name, when, data)
+        return data
+
+    def get_cached_value(self, name: str, when: When):
+        # Implement the logic to query the TrialFieldCache table
+        # to retrieve the cached value, if it exists and is still valid.
+        query = "SELECT value FROM TrialFieldCache WHERE name = %s AND start = %s AND stop = %s;"
+        self.conn.execute(query, params=(name, int(when.start), int(when.stop)))
+        result = self.conn.fetch_all()
+        return result[0][0] if result else None
+
+    def cache_value(self, name: str, when: When, value):
+        # Implement the logic to insert or update the cached value
+        # in the TrialFieldCache table.
+        query = """
+        INSERT INTO TrialFieldCache (name, start, stop, value) 
+        VALUES (%s, %s, %s, %s)
+        ON DUPLICATE KEY UPDATE value = %s;
+        """
+        self.conn.execute(query, params=(name, int(when.start), int(when.stop), value, value))
+
+
+class CachedFieldList(list[CachedDatabaseField]):
+    def get_df(self):
+        df = pd.DataFrame(columns=self.get_names())
+        return df
+
+    def get_names(self):
+        return [field.name for field in self]
+
+    def get_data(self, trial_tstamps: list[When]) -> pd.DataFrame:
+        return self._get_data_from_trials(trial_tstamps)
+
+    def _get_data_from_trials(self, trial_tstamps: list[When]) -> pd.DataFrame:
+        data = []
+        for i, when in enumerate(trial_tstamps):
+            print("working on " + str(i) + " out of " + str(len(trial_tstamps)))
+            field_values = [field.get_and_cache(when) for field in self]
+            names = self.get_names()
+            new_row = OrderedDict(zip(names, field_values))
+            data.append(new_row)
+
+        return pd.DataFrame(data)
+
+"""
+CREATE TABLE `TrialFieldCache` (
+  `name` varchar(255) NOT NULL,
+  `start` bigint(20) NOT NULL,
+  `stop` bigint(20) NOT NULL,
+  `value` longtext,
+  PRIMARY KEY (`name`,`start`,`stop`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1
+"""

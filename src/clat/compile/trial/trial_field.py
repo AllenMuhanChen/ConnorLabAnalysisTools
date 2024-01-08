@@ -30,31 +30,30 @@ class FieldList(list[Field]):
         return [field.name for field in self]
 
     def get_data(self, trial_tstamps: list[When]) -> pd.DataFrame:
-        return get_data_from_trials(self, trial_tstamps)
+        return self._get_data_from_trials(self, trial_tstamps)
 
+    def _get_data_from_trials(self, fields: FieldList, trial_tstamps: list[When]) -> pd.DataFrame:
+        data = []
+        for i, when in enumerate(trial_tstamps):
+            print("working on " + str(i) + " out of " + str(len(trial_tstamps)))
+            field_values = [field.get(when) for field in fields]
+            names = fields.get_names()
+            new_row = OrderedDict(zip(names, field_values))
+            data.append(new_row)
 
-class Trial:
-    def __init__(self, when: When, fields: FieldList):
-        self.when = when
-        self.fields = fields
-
-    def append_to_data(self, data):
-        field_values = [field.get(self.when) for field in self.fields]
-        names = self.fields.get_names()
-        new_row = OrderedDict(zip(names, field_values))
-        data.append(new_row)
+        return pd.DataFrame(data)
 
 
 def get_data_from_trials(fields: FieldList, trial_tstamps: list[When]) -> pd.DataFrame:
-    trialList = []
-    for when in trial_tstamps:
-        trialList.append(Trial(when, fields))
     data = []
-    for i, t in enumerate(trialList):
-        print("working on " + str(i) + " out of " + str(len(trialList)))
-        t.append_to_data(data)
-    return pd.DataFrame(data)
+    for i, when in enumerate(trial_tstamps):
+        print("working on " + str(i) + " out of " + str(len(trial_tstamps)))
+        field_values = [field.get(when) for field in fields]
+        names = fields.get_names()
+        new_row = OrderedDict(zip(names, field_values))
+        data.append(new_row)
 
+    return pd.DataFrame(data)
 
 class DatabaseField(Field):
     def __init__(self, conn: Connection, name: str = None):
@@ -63,3 +62,6 @@ class DatabaseField(Field):
 
     def get(self, when: When):
         raise NotImplementedError("Not Implemented")
+
+
+
