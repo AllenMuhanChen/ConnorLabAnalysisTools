@@ -71,7 +71,7 @@ class CachedFieldList(list[CachedDatabaseField]):
         data = []
         for i, when in enumerate(trial_tstamps):
             print("working on " + str(i) + " out of " + str(len(trial_tstamps)))
-            field_values = [field.get_and_cache(field.get_name(), when) for field in self]
+            field_values = [field.get_and_cache(field.name, when) for field in self]
             names = self.get_names()
             new_row = OrderedDict(zip(names, field_values))
             data.append(new_row)
