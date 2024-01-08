@@ -11,8 +11,9 @@ from clat.util.time_util import When
 
 class CachedDatabaseField(DatabaseField):
     """
-    A DatabaseField that caches its value so that it can be recalled rather than recomputed
-    for efficiency. Cached values can also be used for analysis without need to refetch data.
+    A DatabaseField that caches its value in the database so that it can be recalled rather than recomputed
+    for efficiency. Cached values can also be used for analysis without need to refetch data or store in
+    serialized intermediate format.
 
     Override get_cached_value and cache_value to change the caching logic.
     """
@@ -25,16 +26,17 @@ class CachedDatabaseField(DatabaseField):
 
     def get_and_cache(self, when: When):
         if self.is_cache_enabled:
-            cached_value = self.get_cached_value(self.name, when)
+            cached_value = self._get_cached_value(self.name, when)
             if cached_value is not None:
                 return cached_value
 
         data = self.get(when)
         if self.is_store_cache_enabled:
-            self.cache_value(self.name, when, data)
-        return data
+            self._cache_value(self.name, when, data)
+        # return the cached value rather than raw value to ensure same data-types are returned for all calls
+        return self._get_cached_value(self.name, when)
 
-    def get_cached_value(self, name: str, when: When):
+    def _get_cached_value(self, name: str, when: When):
         # Implement the logic to query the TrialFieldCache table
         # to retrieve the cached value, if it exists and is still valid.
         query = "SELECT value FROM TrialFieldCache WHERE name = %s AND start = %s AND stop = %s;"
@@ -42,7 +44,7 @@ class CachedDatabaseField(DatabaseField):
         result = self.conn.fetch_all()
         return result[0][0] if result else None
 
-    def cache_value(self, name: str, when: When, value):
+    def _cache_value(self, name: str, when: When, value):
         # Implement the logic to insert or update the cached value
         # in the TrialFieldCache table.
         query = """
