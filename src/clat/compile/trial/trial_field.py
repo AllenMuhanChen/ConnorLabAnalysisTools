@@ -7,7 +7,10 @@ import pandas as pd
 from clat.util.connection import Connection
 from clat.util.time_util import When
 
-
+"""
+Handles compilation of data while using the timestamps of trialStart and trialStop
+as the primary keys for the data.
+"""
 class Field:
     def __init__(self, name: str = None):
         if name is None:

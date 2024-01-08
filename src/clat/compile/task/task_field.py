@@ -3,7 +3,9 @@ from typing import List
 
 import pandas as pd
 
-
+"""
+Handles compilation of data while using the taskId as the primary key for the data
+"""
 class TaskField:
     def __init__(self, name: str = None):
         if name is None:
