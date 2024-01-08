@@ -11,30 +11,30 @@ from clat.util.time_util import When
 
 class CachedDatabaseField(DatabaseField):
     """
-    A DatabaseField that caches its value in the database so that it can be recalled rather than recomputed
-    for efficiency. Cached values can also be used for analysis without need to refetch data or store in
+    A DatabaseField that caches its value in the database so it can be used for analysis without need to refetch data or store in
     serialized intermediate format.
 
     Override get_cached_value and cache_value to change the caching logic.
+
+    A subclass of a subclass of this class will still need to use super().get rather than
+    super().get_and_cache() because the subclass will not have proper self.name (it is overriden).
     """
 
-    def __init__(self, conn: Connection, is_fetch_cache_enabled: bool = True, is_store_cache_enabled: bool = True,
+
+
+    def __init__(self, conn: Connection,
                  name: str = None):
         super().__init__(conn, name)
-        self.is_cache_enabled = is_fetch_cache_enabled
-        self.is_store_cache_enabled = is_store_cache_enabled
 
-    def get_and_cache(self, when: When):
-        if self.is_cache_enabled:
-            cached_value = self._get_cached_value(self.name, when)
-            if cached_value is not None:
-                return cached_value
+    def get_and_cache(self, name: str, when: When):
+        cached_value = self._get_cached_value(name, when)
+        if cached_value is not None:
+            return cached_value
 
         data = self.get(when)
-        if self.is_store_cache_enabled:
-            self._cache_value(self.name, when, data)
+        self._cache_value(name, when, data)
         # return the cached value rather than raw value to ensure same data-types are returned for all calls
-        return self._get_cached_value(self.name, when)
+        return self._get_cached_value(name, when)
 
     def _get_cached_value(self, name: str, when: When):
         # Implement the logic to query the TrialFieldCache table
@@ -45,6 +45,7 @@ class CachedDatabaseField(DatabaseField):
         return result[0][0] if result else None
 
     def _cache_value(self, name: str, when: When, value):
+        value = str(value)
         # Implement the logic to insert or update the cached value
         # in the TrialFieldCache table.
         query = """
@@ -70,12 +71,13 @@ class CachedFieldList(list[CachedDatabaseField]):
         data = []
         for i, when in enumerate(trial_tstamps):
             print("working on " + str(i) + " out of " + str(len(trial_tstamps)))
-            field_values = [field.get_and_cache(when) for field in self]
+            field_values = [field.get_and_cache(field.get_name(), when) for field in self]
             names = self.get_names()
             new_row = OrderedDict(zip(names, field_values))
             data.append(new_row)
 
         return pd.DataFrame(data)
+
 
 """
 CREATE TABLE `TrialFieldCache` (
