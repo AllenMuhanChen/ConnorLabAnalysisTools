@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import ast
+from concurrent.futures import ThreadPoolExecutor
 from tkinter import filedialog
 import tkinter as tk
 import numpy as np
 import xmltodict
 
-from clat.compile.trial.cached_fields import CachedDatabaseField
+from clat.compile.trial.cached_fields import CachedDatabaseField, CachedFieldList
 from clat.eyecal.params import EyeCalibrationParameters
 from clat.util import time_util
 
@@ -26,13 +27,12 @@ def main():
     calibration_trial_times = filter_messages_after_experiment_start(current_conn, calibration_trial_times)
     print("calibration_trial_times: " + str(calibration_trial_times))
 
-    fields = FieldList()
+    fields = CachedFieldList()
     fields.append(CalibrationPointPositionField(current_conn))
     fields.append(SlideOnOffTimestampField(current_conn))
-    # fields.append(VoltsField(current_conn))
     fields.append(AverageVoltsField(current_conn))
     fields.append(DegreesField(current_conn))
-    data = get_data_from_trials(fields, calibration_trial_times)
+    data = fields.get_data(calibration_trial_times)
 
     plot_average_volts(data)
 
@@ -232,24 +232,27 @@ class AverageVoltsField(CachedDatabaseField):
         self.conn.execute(query, params)
         results = self.conn.fetch_all()
 
-        left_eye_positions = []
-        right_eye_positions = []
+        # Process results in parallel
+        with ThreadPoolExecutor() as executor:
+            processed_results = list(executor.map(self.process_message, results))
 
-        for row in results:
-            msg = row[0]
-            msg_dict = xmltodict.parse(msg)
-            eye_id = msg_dict['EyeDeviceMessage']['id']
-            volt_x = float(msg_dict['EyeDeviceMessage']['volt']['x'])
-            volt_y = float(msg_dict['EyeDeviceMessage']['volt']['y'])
-
-            if eye_id == 'leftIscan':
-                left_eye_positions.append((volt_x, volt_y))
-            elif eye_id == 'rightIscan':
-                right_eye_positions.append((volt_x, volt_y))
-
-        return left_eye_positions, right_eye_positions
+        left_eye_positions, right_eye_positions = zip(*processed_results)
+        return list(filter(None, left_eye_positions)), list(filter(None, right_eye_positions))
 
 
+    @staticmethod
+    def process_message(row):
+        msg = row[0]
+        msg_dict = xmltodict.parse(msg)
+        eye_id = msg_dict['EyeDeviceMessage']['id']
+        volt_x = float(msg_dict['EyeDeviceMessage']['volt']['x'])
+        volt_y = float(msg_dict['EyeDeviceMessage']['volt']['y'])
+
+        if eye_id == 'leftIscan':
+            return (volt_x, volt_y), None
+        elif eye_id == 'rightIscan':
+            return None, (volt_x, volt_y)
+        return None, None
     @staticmethod
     def calculate_average(positions: List[Tuple[float, float]]) -> Optional[Tuple[float, float]]:
         if not positions:

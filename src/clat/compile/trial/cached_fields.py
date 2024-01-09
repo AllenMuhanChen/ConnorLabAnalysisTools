@@ -45,7 +45,7 @@ class CachedDatabaseField(DatabaseField):
     def get_and_cache(self, name: str, when: When):
         cached_value = self._get_cached_value(name, when)
         if cached_value is not None:
-            return cached_value
+            return ast.literal_eval(cached_value)
 
         data = self.get(when)
         self._cache_value(name, when, data)
@@ -73,6 +73,8 @@ class CachedDatabaseField(DatabaseField):
 
     def get_name(self):
         return type(self).__name__
+
+
 class CachedFieldList(list[CachedDatabaseField]):
     def get_df(self):
         df = pd.DataFrame(columns=self.get_names())

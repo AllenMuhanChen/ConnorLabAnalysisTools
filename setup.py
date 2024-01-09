@@ -5,7 +5,7 @@ with open('requirements.txt') as f:
 
 setup(
     name='ConnorLabAnalysisTools',
-    version='0.2.2s',
+    version='0.2.2',
     description='Tools for analyzing data in the Connor Lab',
     # long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
