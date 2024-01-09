@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 from collections import OrderedDict
 
 import pandas as pd
@@ -20,11 +21,27 @@ class CachedDatabaseField(DatabaseField):
     super().get_and_cache() because the subclass will not have proper self.name (it is overriden).
     """
 
-
-
     def __init__(self, conn: Connection,
-                 name: str = None):
-        super().__init__(conn, name)
+                 ):
+        self.conn = conn
+        super().__init__(conn, self.get_name())
+
+    def get_cached_super(self, when: When, super_type: CachedDatabaseField):
+
+        # Dynamically get the superclass instance based on super_type
+        # Dynamically create an instance of the specified superclass
+        super_field = super_type(self.conn)
+
+        # Attempt to retrieve cached value
+        cached_value = self._get_cached_value(super_field.get_name(), when)
+        if cached_value is not None:
+            return ast.literal_eval(cached_value)
+
+        # Fetch data using the superclass's get method and cache it
+        data = super_field.get(when)
+        self._cache_value(super_field.get_name(), when, data)
+        converted_value = ast.literal_eval(self._get_cached_value(super_field.get_name(), when))
+        return converted_value
 
     def get_and_cache(self, name: str, when: When):
         cached_value = self._get_cached_value(name, when)
@@ -34,7 +51,7 @@ class CachedDatabaseField(DatabaseField):
         data = self.get(when)
         self._cache_value(name, when, data)
         # return the cached value rather than raw value to ensure same data-types are returned for all calls
-        return self._get_cached_value(name, when)
+        return ast.literal_eval(self._get_cached_value(name, when))
 
     def _get_cached_value(self, name: str, when: When):
         # Implement the logic to query the TrialFieldCache table
@@ -55,7 +72,8 @@ class CachedDatabaseField(DatabaseField):
         """
         self.conn.execute(query, params=(name, int(when.start), int(when.stop), value, value))
 
-
+    def get_name(self):
+        return type(self).__name__
 class CachedFieldList(list[CachedDatabaseField]):
     def get_df(self):
         df = pd.DataFrame(columns=self.get_names())

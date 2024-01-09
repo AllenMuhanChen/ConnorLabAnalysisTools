@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import ast
 from tkinter import filedialog
 import tkinter as tk
 import numpy as np
 import xmltodict
 
+from clat.compile.trial.cached_fields import CachedDatabaseField
 from clat.eyecal.params import EyeCalibrationParameters
 from clat.util import time_util
 
@@ -129,9 +131,12 @@ def plot_average_volts(data):
     plt.show()
 
 
-class CalibrationPointPositionField(DatabaseField):
-    def __init__(self, conn, name: str = "CalibrationPointPosition"):
-        super().__init__(conn, name)
+class CalibrationPointPositionField(CachedDatabaseField):
+    def __init__(self, conn):
+        super().__init__(conn)
+
+    def get_name(self):
+        return "CalibrationPointPosition"
 
     def get(self, when: When):
         return self.get_calibration_point_setup_msg(when.start, when.stop)
@@ -153,9 +158,12 @@ class CalibrationPointPositionField(DatabaseField):
         return (x, y)
 
 
-class SlideOnOffTimestampField(DatabaseField):
-    def __init__(self, conn, name: str = "SlideOnOffTimestamps"):
-        super().__init__(conn, name)
+class SlideOnOffTimestampField(CachedDatabaseField):
+    def __init__(self, conn):
+        super().__init__(conn)
+
+    def get_name(self):
+        return "SlideOnOffTimestamps"
 
     def get(self, when: When) -> Tuple[Optional[Any], Optional[Any]]:
         return self.get_slide_on_off_timestamps(when.start, when.stop)
@@ -193,9 +201,12 @@ class SlideOnOffTimestampField(DatabaseField):
         return slide_on_timestamp, slide_off_timestamp
 
 
-class VoltsField(DatabaseField):
-    def __init__(self, conn, name: str = "VoltsLeftRight"):
-        super().__init__(conn, name)
+class VoltsField(CachedDatabaseField):
+    def __init__(self, conn):
+        super().__init__(conn)
+
+    def get_name(self):
+        return "VoltsLeftRight"
 
     def get(self, when: When) -> Tuple[
         List[Tuple[float, float]], List[Tuple[float, float]]]:
@@ -232,11 +243,15 @@ class VoltsField(DatabaseField):
 
 
 class AverageVoltsField(VoltsField):
-    def __init__(self, conn, name: str = "AverageVoltsLeftRight"):
-        super().__init__(conn, name)
+    def __init__(self, conn):
+        super().__init__(conn)
+
+    def get_name(self):
+        return "AverageVoltsLeftRight"
 
     def get(self, when: When) -> Tuple[Optional[Tuple[float, float]], Optional[Tuple[float, float]]]:
-        left_eye_positions, right_eye_positions = super().get(when)
+        cached_super = self.get_cached_super(when, VoltsField)
+        left_eye_positions, right_eye_positions = cached_super
         left_eye_positions_filtered = self.remove_outliers(left_eye_positions)
         right_eye_positions_filtered = self.remove_outliers(right_eye_positions)
         return self.calculate_average(left_eye_positions_filtered), self.calculate_average(right_eye_positions_filtered)
@@ -278,12 +293,15 @@ class AverageVoltsField(VoltsField):
 
 
 class DegreesField(AverageVoltsField):
-    def __init__(self, conn, name: str = "DegreesLeftRight"):
-        super().__init__(conn, name)
+    def get_name(self):
+        return "DegreesLeftRight"
+
+    def __init__(self, conn):
+        super().__init__(conn)
 
     def get(self, when: When):
         params = EyeCalibrationParameters.read_params(self.conn)
-        left_eye_positions, right_eye_positions = super().get(when)
+        left_eye_positions, right_eye_positions = self.get_cached_super(when, AverageVoltsField)
         return params.volt_to_degree((left_eye_positions, right_eye_positions))
 
 
