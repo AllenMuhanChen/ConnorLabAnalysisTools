@@ -29,7 +29,7 @@ class TrialCollector:
         trial_starts = self.beh_msg[self.beh_msg['type'] == "TrialStart"]['tstamp'].values
         trial_stops = self.beh_msg[self.beh_msg['type'] == "TrialStop"]['tstamp'].values
         trial_starts, trial_stops = self.sort_fix_bad_trials(trial_starts, trial_stops)
-        return [time_util.When(trial_starts[i], trial_stops[i]) for i in range(len(trial_starts))]
+        return [time_util.When(trial_starts[i], trial_stops[i]) for i in range(min(len(trial_starts), len(trial_stops)))]
 
     def sort_fix_bad_trials(self, trial_starts, trial_stops):
         """Finds bad trials by sorting the trial start and stops by their time stamps
