@@ -27,7 +27,6 @@ class CachedDatabaseField(DatabaseField):
         super().__init__(conn, self.get_name())
 
     def get_cached_super(self, when: When, super_type: CachedDatabaseField):
-
         # Dynamically get the superclass instance based on super_type
         # Dynamically create an instance of the specified superclass
         super_field = super_type(self.conn)

@@ -29,7 +29,7 @@ def main():
     fields = FieldList()
     fields.append(CalibrationPointPositionField(current_conn))
     fields.append(SlideOnOffTimestampField(current_conn))
-    fields.append(VoltsField(current_conn))
+    # fields.append(VoltsField(current_conn))
     fields.append(AverageVoltsField(current_conn))
     fields.append(DegreesField(current_conn))
     data = get_data_from_trials(fields, calibration_trial_times)
@@ -201,16 +201,24 @@ class SlideOnOffTimestampField(CachedDatabaseField):
         return slide_on_timestamp, slide_off_timestamp
 
 
-class VoltsField(CachedDatabaseField):
+
+class AverageVoltsField(CachedDatabaseField):
     def __init__(self, conn):
         super().__init__(conn)
 
     def get_name(self):
-        return "VoltsLeftRight"
+        return "AverageVoltsLeftRight"
 
-    def get(self, when: When) -> Tuple[
-        List[Tuple[float, float]], List[Tuple[float, float]]]:
-        return self.get_eye_device_messages(when.start, when.stop)
+    def get(self, when: When) -> Tuple[Optional[Tuple[float, float]], Optional[Tuple[float, float]]]:
+        left_eye_positions, right_eye_positions = self.get_eye_device_messages(when.start, when.stop)
+        left_eye_positions_filtered = self.remove_outliers(left_eye_positions)
+        right_eye_positions_filtered = self.remove_outliers(right_eye_positions)
+
+        average_left = self.calculate_average(left_eye_positions_filtered)
+        average_right = self.calculate_average(right_eye_positions_filtered)
+
+        self._cache_value(self.get_name(), when, (average_left, average_right))
+        return average_left, average_right
 
     def get_eye_device_messages(self, start_tstamp: datetime, end_tstamp: datetime) -> Tuple[
         List[Tuple[float, float]], List[Tuple[float, float]]]:
@@ -241,20 +249,6 @@ class VoltsField(CachedDatabaseField):
 
         return left_eye_positions, right_eye_positions
 
-
-class AverageVoltsField(VoltsField):
-    def __init__(self, conn):
-        super().__init__(conn)
-
-    def get_name(self):
-        return "AverageVoltsLeftRight"
-
-    def get(self, when: When) -> Tuple[Optional[Tuple[float, float]], Optional[Tuple[float, float]]]:
-        cached_super = self.get_cached_super(when, VoltsField)
-        left_eye_positions, right_eye_positions = cached_super
-        left_eye_positions_filtered = self.remove_outliers(left_eye_positions)
-        right_eye_positions_filtered = self.remove_outliers(right_eye_positions)
-        return self.calculate_average(left_eye_positions_filtered), self.calculate_average(right_eye_positions_filtered)
 
     @staticmethod
     def calculate_average(positions: List[Tuple[float, float]]) -> Optional[Tuple[float, float]]:
