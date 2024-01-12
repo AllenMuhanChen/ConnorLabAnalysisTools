@@ -31,6 +31,12 @@ def from_x_days_ago(x):
     return when
 
 
+def from_date_to_now(year: int, month: int, day: int) -> When:
+    start = to_unix(datetime.date(year, month, day))
+    stop = now()
+    when = When(start, stop)
+    return when
+
 def all():
     when = When(0, to_unix(datetime.date.fromisoformat('3022-01-01')))
     return when

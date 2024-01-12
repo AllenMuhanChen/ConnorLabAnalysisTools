@@ -71,8 +71,6 @@ class CachedDatabaseField(DatabaseField):
         """
         self.conn.execute(query, params=(name, int(when.start), int(when.stop), value, value))
 
-    def get_name(self):
-        return type(self).__name__
 
 
 class CachedFieldList(list[CachedDatabaseField]):
@@ -91,7 +89,9 @@ class CachedFieldList(list[CachedDatabaseField]):
         for i, when in enumerate(trial_tstamps):
             print("working on " + str(i) + " out of " + str(len(trial_tstamps)))
             field_values = [field.get_and_cache(field.name, when) for field in self]
+            field_values.insert(0, when)
             names = self.get_names()
+            names.insert(0, "TrialStartStop")
             new_row = OrderedDict(zip(names, field_values))
             data.append(new_row)
 
