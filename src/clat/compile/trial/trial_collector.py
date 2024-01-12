@@ -11,25 +11,67 @@ class TrialCollector:
        and filtering types of trials (i.e. from different kinds of experiments)
        based on the msgs between trialStart and trialStop in BehMsg"""
     def __init__(self, conn: Connection, when: When = time_util.today()):
-        self.beh_msg = conn.get_beh_msg(when)
-        self.stim_spec = conn.get_stim_spec(when)
-        self.stim_obj_data = conn.get_stim_obj_data(when)
-
-    def collect_choice_trials(self):
-        print("Collecting choice trials")
-        all_trial_whens = self.collect_trials()
-        choice_trial_whens = []
-        for when in all_trial_whens:
-            if table_util.contains_choice_success(self.beh_msg, when):
-                choice_trial_whens.append(when)
-        return choice_trial_whens
+        self.conn = conn
+        self.when = when
+        # self.beh_msg = conn.get_beh_msg(when)
+        # self.stim_spec = conn.get_stim_spec(when)
+        # self.stim_obj_data = conn.get_stim_obj_data(when)
 
     def collect_trials(self):
         print("Collecting all trials")
-        trial_starts = self.beh_msg[self.beh_msg['type'] == "TrialStart"]['tstamp'].values
-        trial_stops = self.beh_msg[self.beh_msg['type'] == "TrialStop"]['tstamp'].values
+
+        # SQL query to get all trial start timestamps
+        query_trial_starts = """
+        SELECT tstamp 
+        FROM BehMsg 
+        WHERE type = 'TrialStart'
+        AND tstamp BETWEEN %s AND %s
+        ORDER BY tstamp;
+        """
+        self.conn.execute(query_trial_starts, (self.when.start, self.when.stop))
+        trial_starts = self.conn.fetch_all()
+        trial_starts = [trial_start_tuple[0] for trial_start_tuple in trial_starts]
+
+        # SQL query to get all trial stop timestamps
+        query_trial_stops = """
+        SELECT tstamp 
+        FROM BehMsg 
+        WHERE type = 'TrialStop'
+        AND tstamp BETWEEN %s AND %s
+        ORDER BY tstamp;
+        """
+        self.conn.execute(query_trial_stops, (self.when.start, self.when.stop))
+        trial_stops = self.conn.fetch_all()
+        trial_stops = [trial_stop_tuple[0] for trial_stop_tuple in trial_stops]
+
         trial_starts, trial_stops = self.sort_fix_bad_trials(trial_starts, trial_stops)
-        return [time_util.When(trial_starts[i], trial_stops[i]) for i in range(min(len(trial_starts), len(trial_stops)))]
+        return [time_util.When(trial_starts[i], trial_stops[i]) for i in
+                range(min(len(trial_starts), len(trial_stops)))]
+
+    def collect_choice_trials(self):
+        all_trial_whens = self.collect_trials()
+        print("Collecting choice trials")
+        choice_trial_whens = []
+
+
+        query = """
+                SELECT tstamp
+                FROM BehMsg 
+                WHERE type = 'ChoiceSelectionSuccess' 
+                AND tstamp BETWEEN %s AND %s;
+                """
+        self.conn.execute(query, (int(self.when.start), int(self.when.stop)))
+        result = self.conn.fetch_all()
+        choice_tstamps = [result_tuple[0] for result_tuple in result]
+
+        # Check if any of the choice_tstamps are sandwiched between the trial start and stop times
+        for when in all_trial_whens:
+            for choice_tstamp in choice_tstamps:
+                if when.start <= choice_tstamp <= when.stop:
+                    choice_trial_whens.append(when)
+                    break  # Once a choice_tstamp is found in a trial period, no need to check other choice_tstamps
+
+        return choice_trial_whens
 
     def sort_fix_bad_trials(self, trial_starts, trial_stops):
         """Finds bad trials by sorting the trial start and stops by their time stamps
