@@ -202,7 +202,7 @@ class SlideOnOffTimestampField(CachedDatabaseField):
 
 
 
-class AverageVoltsField(CachedDatabaseField):
+class AverageVoltsField(SlideOnOffTimestampField):
     def __init__(self, conn):
         super().__init__(conn)
 
@@ -210,23 +210,26 @@ class AverageVoltsField(CachedDatabaseField):
         return "AverageVoltsLeftRight"
 
     def get(self, when: When) -> Tuple[Optional[Tuple[float, float]], Optional[Tuple[float, float]]]:
-        left_eye_positions, right_eye_positions = self.get_eye_device_messages(when.start, when.stop)
+        slide_on_off_timestamps = self.get_cached_super(when, SlideOnOffTimestampField)
+        left_eye_positions, right_eye_positions = self.get_eye_device_messages(slide_on_off_timestamps[0], slide_on_off_timestamps[1])
         left_eye_positions_filtered = self.remove_outliers(left_eye_positions)
         right_eye_positions_filtered = self.remove_outliers(right_eye_positions)
 
         average_left = self.calculate_average(left_eye_positions_filtered)
         average_right = self.calculate_average(right_eye_positions_filtered)
 
-        self._cache_value(self.get_name(), when, (average_left, average_right))
+        # self._cache_value(self.get_name(), when, (average_left, average_right))
         return average_left, average_right
 
     def get_eye_device_messages(self, start_tstamp: datetime, end_tstamp: datetime) -> Tuple[
         List[Tuple[float, float]], List[Tuple[float, float]]]:
+
+
         query = """
-            SELECT msg 
-            FROM BehMsgEye 
-            WHERE type = 'EyeDeviceMessage' 
-            AND tstamp BETWEEN %s AND %s
+            SELECT msg
+                FROM BehMsgEye
+                WHERE type = 'EyeDeviceMessage' 
+                AND tstamp BETWEEN %s AND %s
         """
         params = (start_tstamp, end_tstamp)
         self.conn.execute(query, params)
@@ -236,6 +239,8 @@ class AverageVoltsField(CachedDatabaseField):
         with ThreadPoolExecutor() as executor:
             processed_results = list(executor.map(self.process_message, results))
 
+        if not processed_results:
+            return ([(0,0), (0,0)], [(0,0), (0,0)])
         left_eye_positions, right_eye_positions = zip(*processed_results)
         return list(filter(None, left_eye_positions)), list(filter(None, right_eye_positions))
 

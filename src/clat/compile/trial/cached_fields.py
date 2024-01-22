@@ -34,23 +34,30 @@ class CachedDatabaseField(DatabaseField):
         # Attempt to retrieve cached value
         cached_value = self._get_cached_value(super_field.get_name(), when)
         if cached_value is not None:
-            return ast.literal_eval(cached_value)
+            return self.convert_from_string(cached_value)
 
         # Fetch data using the superclass's get method and cache it
         data = super_field.get(when)
         self._cache_value(super_field.get_name(), when, data)
-        converted_value = ast.literal_eval(self._get_cached_value(super_field.get_name(), when))
+        converted_value = self.convert_from_string(self._get_cached_value(super_field.get_name(), when))
         return converted_value
 
     def get_and_cache(self, name: str, when: When):
         cached_value = self._get_cached_value(name, when)
         if cached_value is not None:
-            return ast.literal_eval(cached_value)
+            return self.convert_from_string(cached_value)
 
         data = self.get(when)
         self._cache_value(name, when, data)
         # return the cached value rather than raw value to ensure same data-types are returned for all calls
-        return ast.literal_eval(self._get_cached_value(name, when))
+        cached_value = self._get_cached_value(name, when)
+        return self.convert_from_string(cached_value)
+
+    def convert_from_string(self, cached_value):
+        try:
+            return ast.literal_eval(cached_value)
+        except ValueError:
+            return cached_value
 
     def _get_cached_value(self, name: str, when: When):
         # Implement the logic to query the TrialFieldCache table
@@ -71,7 +78,8 @@ class CachedDatabaseField(DatabaseField):
         """
         self.conn.execute(query, params=(name, int(when.start), int(when.stop), value, value))
 
-
+    def get_name(self):
+        raise NotImplementedError("Subclasses must implement get_name")
 
 class CachedFieldList(list[CachedDatabaseField]):
     def get_df(self):
@@ -79,7 +87,7 @@ class CachedFieldList(list[CachedDatabaseField]):
         return df
 
     def get_names(self):
-        return [field.name for field in self]
+        return [field.get_name() for field in self]
 
     def get_data(self, trial_tstamps: list[When]) -> pd.DataFrame:
         return self._get_data_from_trials(trial_tstamps)
