@@ -1,9 +1,10 @@
+import datetime
 import threading
 from time import sleep
 
 import mysql.connector
 import pandas as pd
-from clat.util.time_util import When
+from clat.util.time_util import When, to_unix
 
 
 class Connection:
@@ -101,4 +102,35 @@ class Connection:
         df.columns = ['tstamp', 'type', 'msg']
         return df
 
+
+def since_nth_most_recent_experiment(conn: Connection, n=1):
+    """
+    Get the start timestamp of the nth most recent experiment.
+
+    Parameters:
+    - conn: Connection object.
+    - n: Specifies the nth most recent experiment. Defaults to 1 (most recent).
+
+    Returns:
+    - A When object representing the time range of the nth most recent experiment.
+    """
+    query = f"""
+            SELECT tstamp 
+            FROM BehMsg 
+            WHERE type = 'ExperimentStart'
+            ORDER BY tstamp DESC
+            LIMIT 1 OFFSET {n - 1}
+        """
+    conn.execute(query)
+    result = conn.fetch_all()
+
+    if result:
+        start = result[0][0]
+    else:
+        # Handle the case where there are less than n experiments
+        raise ValueError(f"No data available for the {n}th most recent experiment.")
+
+    # Assuming 'to_unix' is a function to convert datetime to Unix timestamp
+    end = to_unix(datetime.date.fromisoformat('3022-01-01'))
+    return When(start, end)
 
