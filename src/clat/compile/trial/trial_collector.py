@@ -108,11 +108,24 @@ class TrialCollector:
     def collect_calibration_trials(self):
         all_trial_times = self.collect_trials()
         calibration_trial_times = []
+
         for when in all_trial_times:
-            if table_util.contains_calibration(self.beh_msg, when):
+            # SQL query to check if there are any 'CalibrationPointSetup' messages during the trial
+            query = """
+                    SELECT COUNT(*) 
+                    FROM BehMsg 
+                    WHERE type = 'CalibrationPointSetup' 
+                    AND tstamp BETWEEN %s AND %s;
+                    """
+            self.conn.execute(query, (int(when.start), int(when.stop)))
+            result = self.conn.fetch_all()
+
+            # If there are any 'CalibrationPointSetup' messages, add this trial to the list
+            if result[0][0] > 0:
                 when.start = int(when.start)
                 when.stop = int(when.stop)
                 calibration_trial_times.append(when)
+
         return calibration_trial_times
 
     def __ensure_ends_are_aligned(self, trial_starts, trial_stops):
