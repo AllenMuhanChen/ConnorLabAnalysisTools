@@ -2,6 +2,19 @@ from enum import Enum
 
 
 class Channel(Enum):
+    def get_channel(channel_name):
+        """
+        Fetch the Channel enum member based on a name that might contain hyphens.
+
+        Args:
+        channel_name (str): The name of the channel, which can include hyphens.
+
+        Returns:
+        Enum: The corresponding Channel enum member.
+        """
+        modified_name = channel_name.replace('-', '_')
+        return Channel[modified_name]
+
     #A-000 to A-031
     A_000 = "A-000"
     A_001 = "A-001"
@@ -137,5 +150,4 @@ class Channel(Enum):
     D_029 = "D-029"
     D_030 = "D-030"
     D_031 = "D-031"
-
 

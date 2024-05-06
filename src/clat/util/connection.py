@@ -4,6 +4,8 @@ from time import sleep
 
 import mysql.connector
 import pandas as pd
+
+from clat.util import time_util
 from clat.util.time_util import When, to_unix
 
 
@@ -11,7 +13,7 @@ class Connection:
 
     def __init__(self, database, user="xper_rw", password="up2nite", host="172.30.6.80"):
         self.database = database
-        self.user=user
+        self.user = user
         self.password = password
         self.host = host
         self._connect()
@@ -134,3 +136,27 @@ def since_nth_most_recent_experiment(conn: Connection, n=1):
     end = to_unix(datetime.date.fromisoformat('3022-01-01'))
     return When(start, end)
 
+
+def get_time_range_for_experiment_id(conn, experiment_id):
+    # Fetch all experiment IDs from the CurrentExperiments table
+    query = "SELECT experiment_id FROM CurrentExperiments ORDER BY experiment_id"
+    conn.execute(query)
+    experiment_ids = [row[0] for row in conn.fetch_all()]
+
+    # Check if the given experiment_id is the most recent one
+    if experiment_id == experiment_ids[-1]:
+        # If it's the most recent, return a When object with experiment_id and current time
+        return When(experiment_id, time_util.now())
+    else:
+        # If it's not the most recent, find the next experiment_id chronologically
+        next_experiment_id = None
+        for exp_id in experiment_ids:
+            if exp_id > experiment_id:
+                next_experiment_id = exp_id
+                break
+
+        if next_experiment_id is not None:
+            # Return a When object with the given experiment_id and the next experiment_id
+            return When(experiment_id, next_experiment_id)
+        else:
+            raise ValueError(f"No experiment found after experiment ID {experiment_id}")

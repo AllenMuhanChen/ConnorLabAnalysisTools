@@ -26,10 +26,10 @@ class CachedDatabaseField(DatabaseField):
         self.conn = conn
         super().__init__(conn, self.get_name())
 
-    def get_cached_super(self, when: When, super_type: CachedDatabaseField):
+    def get_cached_super(self, when: When, super_type: CachedDatabaseField, *args, **kwargs):
         # Dynamically get the superclass instance based on super_type
         # Dynamically create an instance of the specified superclass
-        super_field = super_type(self.conn)
+        super_field = super_type(self.conn, *args, **kwargs)
 
         # Attempt to retrieve cached value
         cached_value = self._get_cached_value(super_field.get_name(), when)
@@ -89,14 +89,20 @@ class CachedFieldList(list[CachedDatabaseField]):
     def get_names(self):
         return [field.get_name() for field in self]
 
-    def get_data(self, trial_tstamps: list[When]) -> pd.DataFrame:
+    def to_data(self, trial_tstamps: list[When]) -> pd.DataFrame:
         return self._get_data_from_trials(trial_tstamps)
 
     def _get_data_from_trials(self, trial_tstamps: list[When]) -> pd.DataFrame:
         data = []
         for i, when in enumerate(trial_tstamps):
             print("working on " + str(i) + " out of " + str(len(trial_tstamps)))
-            field_values = [field.get_and_cache(field.name, when) for field in self]
+            field_values = []
+            for field in self:
+                try:
+                    field_values.append(field.get_and_cache(field.name, when))
+                except Exception as e:
+                    print(f"Error fetching {field.name} at {when} for trial {i}: {e}")
+                    field_values.append(None)
             field_values.insert(0, when)
             names = self.get_names()
             names.insert(0, "TrialStartStop")

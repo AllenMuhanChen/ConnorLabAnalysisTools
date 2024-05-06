@@ -38,7 +38,8 @@ class FieldList(list[Field]):
     def _get_data_from_trials(self, fields: FieldList, trial_tstamps: list[When]) -> pd.DataFrame:
         data = []
         for i, when in enumerate(trial_tstamps):
-            print("working on " + str(i) + " out of " + str(len(trial_tstamps)))
+            if i % 100 == 0:
+                print("working on " + str(i) + " out of " + str(len(trial_tstamps)))
             field_values = [field.get(when) for field in fields]
             names = fields.get_names()
             new_row = OrderedDict(zip(names, field_values))
@@ -50,7 +51,8 @@ class FieldList(list[Field]):
 def get_data_from_trials(fields: FieldList, trial_tstamps: list[When]) -> pd.DataFrame:
     data = []
     for i, when in enumerate(trial_tstamps):
-        print("working on " + str(i) + " out of " + str(len(trial_tstamps)))
+        if i % 100 == 0:
+            print("working on " + str(i) + " out of " + str(len(trial_tstamps)))
         field_values = [field.get(when) for field in fields]
         names = fields.get_names()
         new_row = OrderedDict(zip(names, field_values))

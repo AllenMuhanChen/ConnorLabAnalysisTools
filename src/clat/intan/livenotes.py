@@ -3,12 +3,17 @@ from typing import Tuple, List, Dict
 
 
 def map_task_id_to_epochs_with_livenotes(livenotes_data: str,
-                                         marker_channel_time_indices: List[Tuple[int, int]]) -> Dict[
+                                         marker_channel_time_indices: List[Tuple[int, int]],
+                                         require_trial_complete=True) -> Dict[
     int, Tuple[int, int]]:
     """
+    If require_trial_complete is True:
     Map unique task IDs to epochs with a following 'Trial Complete' event,
     such that if there are repetitions of a task id in the livenotes, only the complete instance will
     be returned.
+
+    If require_trial_complete is False:
+    Map unique task IDs to epochs without requiring a following 'Trial Complete' event.
     """
     data = read_livenotes(livenotes_data)
     events = parse_livenotes_to_events(data)
@@ -29,7 +34,17 @@ def map_task_id_to_epochs_with_livenotes(livenotes_data: str,
             following_event = events[idx + 1][1]  # Get the following event
 
         # Only proceed if the following event is 'Trial Complete'
-        if following_event == 'Trial Complete':
+
+        if require_trial_complete:
+            if following_event == 'Trial Complete':
+                for start, end in marker_channel_time_indices:
+                    if closest_start is None or abs(tstamp - start) < abs(tstamp - closest_start):
+                        closest_start = start
+                        closest_end = end
+
+                if closest_start is not None and result.get(stim_id) is None:
+                    result[stim_id] = (closest_start, closest_end)
+        else:
             for start, end in marker_channel_time_indices:
                 if closest_start is None or abs(tstamp - start) < abs(tstamp - closest_start):
                     closest_start = start

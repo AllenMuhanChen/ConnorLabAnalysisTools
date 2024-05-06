@@ -1,30 +1,38 @@
 import xmltodict
 
+from clat.compile.task.cached_task_fields import CachedTaskField
+from clat.compile.trial.cached_fields import CachedDatabaseField
 from clat.compile.trial.trial_field import DatabaseField
 from clat.util.connection import Connection
 from clat.util.time_util import When
 
 
 def get_stim_spec_id(conn: Connection, when: When) -> int:
-    conn.execute(
-        "SELECT msg from BehMsg WHERE "
-        "type = 'SlideOn' AND "
-        "tstamp >= %s AND tstamp <= %s",
-        params=(int(when.start), int(when.stop)))
-    trial_msg_xml = conn.fetch_one()
-    trial_msg_dict = xmltodict.parse(trial_msg_xml)
-    taskId = int(trial_msg_dict['SlideEvent']['taskId'])
+    try:
+        conn.execute(
+            "SELECT msg from BehMsg WHERE "
+            "type = 'SlideOn' AND "
+            "tstamp >= %s AND tstamp <= %s",
+            params=(int(when.start), int(when.stop)))
+        trial_msg_xml = conn.fetch_one()
+        trial_msg_dict = xmltodict.parse(trial_msg_xml)
+        taskId = int(trial_msg_dict['SlideEvent']['taskId'])
 
-    conn.execute("SELECT stim_id from TaskToDo WHERE "
-                 "task_id = %s",
-                 params=(taskId,))
-    stim_spec_id = conn.fetch_one()
+        conn.execute("SELECT stim_id from TaskToDo WHERE "
+                     "task_id = %s",
+                     params=(taskId,))
+        stim_spec_id = conn.fetch_one()
+    except:
+        return "None"
     return stim_spec_id
 
 
-class StimSpecIdField(DatabaseField):
+class StimSpecIdField(CachedDatabaseField):
     def get(self, when: When) -> int:
         return get_stim_spec_id(self.conn, when)
+
+    def get_name(self):
+        return "Id"
 
 
 class StimSpecDataField(StimSpecIdField):
@@ -72,8 +80,11 @@ def get_ga_name_from_stim_spec_id(conn, stim_spec_id) -> str:
 
 class NewGaNameField(StimSpecIdField):
     def get(self, when: When) -> str:
-        stim_spec_id = super().get(when)
+        stim_spec_id = self.get_cached_super(when, StimSpecIdField)
         return get_new_ga_name_from_stim_spec_id(self.conn, stim_spec_id)
+
+    def get_name(self):
+        return "GaType"
 
 
 def get_new_ga_name_from_stim_spec_id(conn, stim_spec_id):
@@ -87,18 +98,24 @@ def get_new_ga_name_from_stim_spec_id(conn, stim_spec_id):
 
 class NewGaLineageField(StimSpecIdField):
     def get(self, when: When) -> str:
-        stim_spec_id = super().get(when)
+        stim_spec_id = self.get_cached_super(when, StimSpecIdField)
         return get_new_ga_lineage_from_stim_spec_id(self.conn, stim_spec_id)
+
+    def get_name(self):
+        return "Lineage"
 
 
 class RegimeScoreField(NewGaLineageField):
     def get(self, when: When) -> str:
-        lineage_id = super().get(when)
+        lineage_id = self.get_cached_super(when, NewGaLineageField)
         return float(get_regime_score_from_lineage_id(self.conn, lineage_id))
+
+    def get_name(self):
+        return "RegimeScore"
 
 
 def get_regime_score_from_lineage_id(conn, lineage_id):
-    conn.execute("SELECT regime_score FROM LineageGaInfo WHERE lineage_id"
+    conn.execute("SELECT regime FROM LineageGaInfo WHERE lineage_id"
                  " = %s",
                  params=(lineage_id,))
     regime_score = conn.fetch_one()

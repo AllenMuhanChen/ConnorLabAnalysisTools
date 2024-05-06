@@ -31,7 +31,8 @@ class TaskFieldList(List[TaskField]):
         task_list = [Task(task_id, self) for task_id in task_ids]
         data = []
         for i, task in enumerate(task_list):
-            print("working on", i, "out of", len(task_list))
+            if i % 100 == 0:
+                print("working on", i, "out of", len(task_list))
             task.append_to_data(data)
         return pd.DataFrame(data)
 
@@ -57,7 +58,15 @@ class Task:
         self.fields = fields
 
     def append_to_data(self, data):
-        field_values = [field.get(self.task_id) for field in self.fields]
+        field_values = []
+        for field in self.fields:
+            try:
+                field_value = field.get(self.task_id)
+            except Exception as e:
+                error = f"Error getting {field.name} for task_id {self.task_id}: {e}"
+                print(error)
+                field_value = "None"
+            field_values.append(field_value)
         names = self.fields.get_names()
         new_row = OrderedDict(zip(names, field_values))
         data.append(new_row)

@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 
 
 def main():
-    current_conn = Connection("allen_estimshape_train_231211")
+    current_conn = Connection("allen_estimshape_ga_dev_240207")
     trial_collector = TrialCollector(conn=current_conn, when=time_util.from_x_days_ago(0))
     calibration_trial_times = trial_collector.collect_calibration_trials()
     calibration_trial_times = filter_messages_after_experiment_start(current_conn, calibration_trial_times)
@@ -32,7 +32,7 @@ def main():
     fields.append(SlideOnOffTimestampField(current_conn))
     fields.append(AverageVoltsField(current_conn))
     fields.append(DegreesField(current_conn))
-    data = fields.get_data(calibration_trial_times)
+    data = fields.to_data(calibration_trial_times)
 
     plot_average_volts(data)
 
