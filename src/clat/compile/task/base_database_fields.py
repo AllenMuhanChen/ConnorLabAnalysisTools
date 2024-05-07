@@ -24,7 +24,7 @@ class StimSpecIdField(DatabaseField):
         # Assuming a method or query to fetch the StimSpecId based on task_id
         # For demonstration, let's assume a method get_stim_spec_id is defined in the Connection class
         stim_spec_id = self.get_stim_spec_id(task_id)
-        return stim_spec_id
+        return int(stim_spec_id)
 
     def get_stim_spec_id(self, task_id: int) -> int:
         # Execute the query to get the StimSpecId based on task_id
