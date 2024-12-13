@@ -58,6 +58,8 @@ class CachedDatabaseField(DatabaseField):
             return ast.literal_eval(cached_value)
         except ValueError:
             return cached_value
+        except SyntaxError:
+            return cached_value
 
     def _get_cached_value(self, name: str, when: When):
         # Implement the logic to query the TrialFieldCache table
