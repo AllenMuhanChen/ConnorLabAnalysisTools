@@ -4,7 +4,8 @@ from typing import Tuple, List, Dict
 
 def map_task_id_to_epochs_with_livenotes(livenotes_data: str,
                                          marker_channel_time_indices: List[Tuple[int, int]],
-                                         require_trial_complete=True) -> Dict[
+                                         require_trial_complete=True,
+                                         is_output_first_instance=False) -> Dict[
     int, Tuple[int, int]]:
     """
     If require_trial_complete is True:
@@ -13,47 +14,63 @@ def map_task_id_to_epochs_with_livenotes(livenotes_data: str,
     be returned.
 
     If require_trial_complete is False:
-    Map unique task IDs to epochs without requiring a following 'Trial Complete' event.
+    Map task IDs to epochs without requiring a following 'Trial Complete' event. If a taskId
+    has multiple instances in the livenotes, output_first_instance will determine whether the first
+    instance or the last instance will be returned. If output_first_instance is True, the first instance
+    will be returned, otherwise the last instance will be returned.
     """
     data = read_livenotes(livenotes_data)
     events = parse_livenotes_to_events(data)
-    stim_ids = filter_for_stim_ids(events)
-    stim_ids.sort()
+    task_ids = filter_for_task_ids(events)
+    task_ids.sort()
 
     result = {}
 
-    # Loop through each stim_id and find the closest marker channel to it
-    # that has a following 'Trial Complete' event
-    for tstamp, stim_id in stim_ids:
+    # Loop through each task_id and find the closest marker channel to it
+    for tstamp, task_id in task_ids:
         closest_start = None
         closest_end = None
         following_event = None
 
-        idx = events.index((tstamp, str(stim_id)))  # Find the index of this stim_id in the original events list
+        idx = events.index((tstamp, str(task_id)))  # Find the index of this task_id in the original events list
         if idx < len(events) - 1:
             following_event = events[idx + 1][1]  # Get the following event
 
-        # Only proceed if the following event is 'Trial Complete'
 
         if require_trial_complete:
+            # Only proceed if the following event is 'Trial Complete'
             if following_event == 'Trial Complete':
-                for start, end in marker_channel_time_indices:
-                    if closest_start is None or abs(tstamp - start) < abs(tstamp - closest_start):
-                        closest_start = start
-                        closest_end = end
+                for epoch_start, epoch_end in marker_channel_time_indices:
+                    if is_epoch_closer(closest_start, epoch_start, tstamp) or closest_start is None:
+                        closest_start = epoch_start
+                        closest_end = epoch_end
 
-                if closest_start is not None and result.get(stim_id) is None:
-                    result[stim_id] = (closest_start, closest_end)
+                if closest_start is not None and result.get(task_id) is None:
+                    result[task_id] = (closest_start, closest_end)
         else:
-            for start, end in marker_channel_time_indices:
-                if closest_start is None or abs(tstamp - start) < abs(tstamp - closest_start):
-                    closest_start = start
-                    closest_end = end
+            for epoch_start, epoch_end in marker_channel_time_indices:
+                if is_epoch_closer(closest_start, epoch_start, tstamp) or closest_start is None:
+                    closest_start = epoch_start
+                    closest_end = epoch_end
 
-            if closest_start is not None and result.get(stim_id) is None:
-                result[stim_id] = (closest_start, closest_end)
+            if is_output_first_instance:
+                if closest_start is not None and result.get(task_id) is None:
+                    result[task_id] = (closest_start, closest_end)
+            else:
+                if closest_start is not None:
+                    # will override the previous instance of the task_id
+                    # so that the last instance will be returned at the end
+                    result[task_id] = (closest_start, closest_end)
 
     return result
+
+
+def is_epoch_closer(closest_start, epoch_start, tstamp):
+    return abs(tstamp - epoch_start) < abs(tstamp - closest_start)
+
+
+def is_no_closest_start_yet(closest_start):
+    return closest_start is None
 
 
 def map_unique_task_id_to_epochs_with_livenotes(livenotes_data: str,
@@ -76,7 +93,7 @@ def map_unique_task_id_to_epochs_with_livenotes(livenotes_data: str,
     data = read_livenotes(livenotes_data)
 
     tstamp_and_events_from_livenotes = parse_livenotes_to_events(data)
-    tstamp_and_stim_id_from_livenotes = filter_for_stim_ids(tstamp_and_events_from_livenotes)
+    tstamp_and_stim_id_from_livenotes = filter_for_task_ids(tstamp_and_events_from_livenotes)
 
     # Sort the tstamp_and_stim_id_from_livenotes by tstamp
     tstamp_and_stim_id_from_livenotes.sort()
@@ -104,7 +121,7 @@ def map_unique_task_id_to_epochs_with_livenotes(livenotes_data: str,
     return result
 
 
-def filter_for_stim_ids(tstamp_and_events_from_livenotes: List[Tuple[float, str]]) -> List[Tuple[float, int]]:
+def filter_for_task_ids(tstamp_and_events_from_livenotes: List[Tuple[float, str]]) -> List[Tuple[float, int]]:
     filtered = []
     for tstamp, event in tstamp_and_events_from_livenotes:
         try:
